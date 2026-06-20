@@ -1,0 +1,1098 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AOG Demand Prediction Dashboard</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --sb:#0f1b2d;--sbt:#8fa3bc;--sbh:rgba(255,255,255,.07);--sba:#1e3a5f;
+  --blue:#1a6fc4;--blue2:#3b9eff;--bg:#f0f4f8;--card:#fff;
+  --t1:#0f1b2d;--t2:#64748b;--tm:#94a3b8;--border:#e2e8f0;
+  --green:#22c55e;--orange:#f59e0b;--red:#ef4444;--purple:#8b5cf6;--teal:#14b8a6;
+  --sw:210px;
+}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--t1);display:flex;min-height:100vh;font-size:13px}
+
+/* ── SIDEBAR ── */
+.sidebar{width:var(--sw);background:var(--sb);display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:200;transition:transform .25s}
+.sb-logo{padding:18px 14px 14px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;gap:10px}
+.logo-icon{width:36px;height:36px;background:var(--blue);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.logo-icon svg{width:20px;height:20px;fill:#fff}
+.brand{font-size:15px;font-weight:700;color:#fff;letter-spacing:.4px}
+.brand-sub{font-size:10px;color:var(--sbt)}
+.sb-nav{padding:10px 8px;flex:1;overflow-y:auto}
+.nav-section{font-size:9.5px;font-weight:700;color:rgba(255,255,255,.25);letter-spacing:1.2px;text-transform:uppercase;padding:10px 10px 4px}
+.nav-item{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:7px;cursor:pointer;color:var(--sbt);font-size:12.5px;font-weight:500;transition:all .15s;margin-bottom:1px;user-select:none}
+.nav-item svg{width:15px;height:15px;flex-shrink:0}
+.nav-item:hover{background:var(--sbh);color:#cdd9e5}
+.nav-item.active{background:var(--sba);color:#fff}
+.nav-badge{margin-left:auto;background:#ef4444;color:#fff;font-size:9.5px;font-weight:700;padding:1px 6px;border-radius:99px}
+
+/* ── MAIN ── */
+.main{margin-left:var(--sw);flex:1;display:flex;flex-direction:column;min-height:100vh}
+
+/* ── TOPBAR ── */
+.topbar{background:var(--card);border-bottom:1px solid var(--border);padding:12px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.tb-left{display:flex;align-items:center;gap:12px}
+.tb-title h1{font-size:18px;font-weight:700;color:var(--t1)}
+.tb-title p{font-size:11px;color:var(--t2);margin-top:1px}
+.tb-right{display:flex;align-items:center;gap:8px}
+.btn{display:flex;align-items:center;gap:6px;padding:7px 12px;border:1px solid var(--border);border-radius:7px;background:var(--card);cursor:pointer;font-size:12px;color:var(--t1);font-weight:500;transition:background .15s;font-family:inherit}
+.btn:hover{background:#f8fafc}
+.btn svg{width:13px;height:13px;color:var(--t2)}
+.btn-primary{background:var(--blue);color:#fff;border-color:var(--blue)}
+.btn-primary:hover{background:#1560ad}
+.btn-primary svg{color:#fff}
+
+/* ── PAGES ── */
+.page{display:none;padding:20px 24px;flex:1}
+.page.active{display:block}
+
+/* ── KPI ROW ── */
+.kpi-row{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:16px}
+.kpi{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:15px;cursor:default}
+.kpi-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px}
+.kpi-label{font-size:11px;color:var(--t2);font-weight:500;line-height:1.3}
+.kpi-icon{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.kpi-icon svg{width:16px;height:16px}
+.ic-blue{background:#eff6ff;color:var(--blue)}.ic-orange{background:#fff7ed;color:#ea580c}.ic-purple{background:#f5f3ff;color:#7c3aed}.ic-red{background:#fef2f2;color:#dc2626}.ic-green{background:#f0fdf4;color:#16a34a}.ic-gray{background:#f8fafc;color:#475569}
+.kpi-val{font-size:26px;font-weight:800;line-height:1}
+.kpi-change{font-size:10.5px;font-weight:600;display:flex;align-items:center;gap:3px;margin-top:4px}
+.up{color:#16a34a}.dn{color:#dc2626}.nu{color:var(--t2)}
+
+/* ── CARDS ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px}
+.card-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.card-title{font-size:13px;font-weight:700;color:var(--t1)}
+.card-sub{font-size:11px;color:var(--t2)}
+.view-all{font-size:11.5px;color:var(--blue);cursor:pointer;font-weight:500;background:none;border:none;font-family:inherit}
+.view-all:hover{text-decoration:underline}
+.chart-wrap{height:200px;position:relative}
+.chart-wrap-lg{height:260px;position:relative}
+.chart-wrap-sm{height:150px;position:relative}
+
+select.sel{font-size:12px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;color:var(--t1);background:#fff;cursor:pointer;outline:none;font-family:inherit}
+
+/* ── GRID LAYOUTS ── */
+.g3{display:grid;grid-template-columns:1.6fr 1.1fr 1fr;gap:14px;margin-bottom:14px}
+.g3b{display:grid;grid-template-columns:2fr 1fr 1.1fr;gap:14px;margin-bottom:14px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.g2-3{display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-bottom:14px}
+.mb{margin-bottom:14px}
+
+/* ── TABLE ── */
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+thead th{font-size:10.5px;font-weight:700;color:var(--tm);text-align:left;padding:0 10px 9px 0;border-bottom:1px solid var(--border);text-transform:uppercase;letter-spacing:.5px;white-space:nowrap}
+tbody tr{border-bottom:1px solid #f1f5f9;transition:background .1s}
+tbody tr:hover{background:#f8fafc}
+tbody tr:last-child{border:none}
+tbody td{padding:9px 10px 9px 0;font-size:12px;vertical-align:middle}
+.td-part{font-weight:700;font-size:11px;color:var(--blue)}
+.td-num{font-weight:700;text-align:center}
+
+/* ── BADGES ── */
+.badge{display:inline-block;padding:2px 8px;border-radius:99px;font-size:10.5px;font-weight:700;white-space:nowrap}
+.b-high{background:#fee2e2;color:#dc2626}.b-med{background:#fef3c7;color:#d97706}.b-low{background:#dcfce7;color:#16a34a}
+.b-linked{background:#dbeafe;color:#1d4ed8}.b-released{background:#f3e8ff;color:#7c3aed}.b-closed{background:#f0fdf4;color:#15803d}
+.b-p1{background:#fef2f2;color:#dc2626}.b-p2{background:#fff7ed;color:#d97706}.b-na{background:#f1f5f9;color:#64748b}
+
+/* ── WING BARS ── */
+.wing-list{display:flex;flex-direction:column;gap:10px}
+.wing-row{display:flex;flex-direction:column;gap:4px}
+.wing-info{display:flex;justify-content:space-between;align-items:center;font-size:12px}
+.wing-rank{color:var(--tm);width:14px;font-size:10.5px}
+.wing-name{font-weight:600;flex:1;margin-left:6px}
+.wing-count{font-weight:800;font-size:13px}
+.bar-bg{height:5px;background:#e2e8f0;border-radius:99px;overflow:hidden;margin-left:20px}
+.bar-fill{height:100%;background:var(--blue);border-radius:99px;transition:width .6s ease}
+
+/* ── ALERT ITEMS ── */
+.alert-list{display:flex;flex-direction:column;gap:8px}
+.alert-item{display:flex;gap:9px;align-items:flex-start;padding:9px 11px;border-radius:8px;border-left:3px solid #f59e0b;background:#fffbf0}
+.alert-item.linked{border-left-color:var(--blue);background:#eff6ff}
+.alert-item.released{border-left-color:var(--purple);background:#f5f3ff}
+.al-icon{width:24px;height:24px;border-radius:50%;background:rgba(234,88,12,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.al-icon svg{width:12px;height:12px;color:#ea580c}
+.al-body{flex:1;min-width:0}
+.al-title{font-size:11.5px;font-weight:700;line-height:1.3;color:var(--t1)}
+.al-sub{font-size:10.5px;color:var(--t2);margin-top:2px}
+
+/* ── STAT GRID ── */
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.stat-item{background:#f8fafc;border-radius:8px;padding:10px 12px}
+.stat-label{font-size:10px;color:var(--t2);font-weight:600;text-transform:uppercase;letter-spacing:.4px}
+.stat-val{font-size:20px;font-weight:800;margin-top:2px}
+.stat-val.blue{color:var(--blue)}.stat-val.orange{color:#ea580c}.stat-val.green{color:#16a34a}.stat-val.purple{color:var(--purple)}
+
+/* ── PREDICTOR PAGE ── */
+.predictor-wrap{max-width:800px;margin:0 auto}
+.pred-search{display:flex;gap:10px;margin-bottom:20px}
+.pred-input{flex:1;padding:10px 14px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;outline:none;transition:border .2s}
+.pred-input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(26,111,196,.1)}
+.pred-result{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px;text-align:center;margin-bottom:16px;display:none}
+.pred-result.show{display:block}
+.pred-part{font-size:12px;color:var(--t2);margin-bottom:6px}
+.pred-number{font-size:56px;font-weight:900;color:var(--blue);line-height:1}
+.pred-label{font-size:14px;color:var(--t2);margin-top:4px}
+.pred-risk{display:inline-block;margin-top:10px;padding:4px 14px;border-radius:99px;font-size:13px;font-weight:700}
+.pred-history{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;display:none}
+.pred-history.show{display:block}
+.part-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px}
+.part-btn{padding:8px 10px;border:1px solid var(--border);border-radius:7px;background:var(--card);cursor:pointer;font-size:11.5px;font-family:inherit;text-align:left;transition:all .15s}
+.part-btn:hover{border-color:var(--blue);background:#eff6ff;color:var(--blue)}
+.part-btn .pb-no{font-weight:700;color:var(--blue);font-size:11px}
+.part-btn .pb-name{color:var(--t2);font-size:10.5px;margin-top:1px}
+.error-msg{color:#dc2626;font-size:12px;padding:10px;background:#fef2f2;border-radius:7px;display:none}
+.error-msg.show{display:block}
+
+/* ── REPORTS PAGE ── */
+.report-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}
+.report-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px;cursor:pointer;transition:all .15s;position:relative;overflow:hidden}
+.report-card:hover{border-color:var(--blue);box-shadow:0 4px 12px rgba(26,111,196,.1)}
+.report-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.report-card.blue::before{background:var(--blue)}.report-card.green::before{background:var(--green)}.report-card.orange::before{background:var(--orange)}.report-card.purple::before{background:var(--purple)}.report-card.red::before{background:var(--red)}.report-card.teal::before{background:var(--teal)}
+.rc-icon{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;margin-bottom:10px}
+.rc-icon svg{width:18px;height:18px}
+.rc-title{font-size:13px;font-weight:700;margin-bottom:4px}
+.rc-desc{font-size:11px;color:var(--t2);line-height:1.5}
+
+/* ── INSIGHT BANNER ── */
+.insight{background:linear-gradient(135deg,#eff6ff,#f0fdf4);border:1px solid #bfdbfe;border-radius:10px;padding:10px 14px;display:flex;gap:9px;align-items:flex-start;margin-bottom:14px}
+.insight svg{width:15px;height:15px;color:var(--blue);flex-shrink:0;margin-top:1px}
+.insight p{font-size:11.5px;color:#1e3a5f;line-height:1.6}
+
+/* ── FOOTER ── */
+.footer{background:#eff6ff;border-top:1px solid #bfdbfe;padding:9px 24px;display:flex;align-items:center;justify-content:space-between;font-size:11px;color:#3b82f6}
+.footer-l{display:flex;align-items:center;gap:7px}
+.footer-l svg{width:13px;height:13px}
+.footer-r{color:var(--t2)}
+
+/* ── PAGE HEADER ── */
+.page-header{margin-bottom:16px}
+.page-header h2{font-size:17px;font-weight:700;color:var(--t1)}
+.page-header p{font-size:11.5px;color:var(--t2);margin-top:2px}
+
+/* ── SETTINGS ── */
+.settings-section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:14px}
+.settings-title{font-size:13px;font-weight:700;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.setting-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f8fafc}
+.setting-row:last-child{border:none}
+.setting-label{font-size:12.5px;font-weight:600;color:var(--t1)}
+.setting-desc{font-size:11px;color:var(--t2);margin-top:2px}
+.toggle{width:38px;height:22px;border-radius:99px;background:#d1d5db;cursor:pointer;position:relative;transition:background .2s}
+.toggle.on{background:var(--blue)}
+.toggle::after{content:'';position:absolute;width:16px;height:16px;background:#fff;border-radius:50%;top:3px;left:3px;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.toggle.on::after{transform:translateX(16px)}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:99px}
+</style>
+</head>
+<body>
+
+<!-- ══ SIDEBAR ══ -->
+<aside class="sidebar" id="sidebar">
+  <div class="sb-logo">
+    <div class="logo-icon">
+      <svg viewBox="0 0 24 24"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg>
+    </div>
+    <div><div class="brand">AOG</div><div class="brand-sub">Dev Elhance · HAL</div></div>
+  </div>
+  <nav class="sb-nav">
+    <div class="nav-section">Main</div>
+    <div class="nav-item active" data-page="overview">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+      Overview
+    </div>
+    <div class="nav-item" data-page="aog-risk">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      AOG Risk
+      <span class="nav-badge">34</span>
+    </div>
+    <div class="nav-item" data-page="forecast">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      Demand Forecast
+    </div>
+    <div class="nav-item" data-page="predictor">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      Part Predictor
+    </div>
+
+    <div class="nav-section">Fleet</div>
+    <div class="nav-item" data-page="parts">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
+      Parts
+    </div>
+    <div class="nav-item" data-page="inventory">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>
+      Inventory
+    </div>
+    <div class="nav-item" data-page="stations">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+      Wings / Stations
+    </div>
+
+    <div class="nav-section">Admin</div>
+    <div class="nav-item" data-page="reports">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      Reports
+    </div>
+    <div class="nav-item" data-page="settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/></svg>
+      Settings
+    </div>
+  </nav>
+</aside>
+
+<!-- ══ MAIN ══ -->
+<div class="main">
+
+  <!-- TOPBAR -->
+  <header class="topbar">
+    <div class="tb-left">
+      <div class="tb-title">
+        <h1 id="pageTitle">AOG Demand Prediction Dashboard</h1>
+        <p id="pageSubtitle">Aircraft on Ground Forecasting &amp; Analytics · IAF Fleet · 705 Records</p>
+      </div>
+    </div>
+    <div class="tb-right">
+      <button class="btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        Apr 2024 – Jun 2026
+      </button>
+      <button class="btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+        Filters
+      </button>
+      <button class="btn btn-primary" onclick="goPage('predictor')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        Predict Part
+      </button>
+    </div>
+  </header>
+
+  <!-- ══ PAGE: OVERVIEW ══ -->
+  <div class="page active" id="page-overview">
+    <div class="kpi-row">
+      <div class="kpi">
+        <div class="kpi-head"><span class="kpi-label">Total AOG Events</span>
+          <div class="kpi-icon ic-blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg></div>
+        </div>
+        <div class="kpi-val">705</div>
+        <div class="kpi-change nu">Apr 2024 – Jun 2026</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-head"><span class="kpi-label">Open AOG Events</span>
+          <div class="kpi-icon ic-orange"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
+        </div>
+        <div class="kpi-val">34</div>
+        <div class="kpi-change dn">▲ 20 Linked · 14 Released</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-head"><span class="kpi-label">RF Predicted (Jul 2026)</span>
+          <div class="kpi-icon ic-purple"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg></div>
+        </div>
+        <div class="kpi-val">~21</div>
+        <div class="kpi-change up">Random Forest Model</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-head"><span class="kpi-label">Unique Parts Tracked</span>
+          <div class="kpi-icon ic-red"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/></svg></div>
+        </div>
+        <div class="kpi-val">136</div>
+        <div class="kpi-change nu">P1 priority: 508 events</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-head"><span class="kpi-label">Avg. Fulfilment TAT</span>
+          <div class="kpi-icon ic-gray"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+        </div>
+        <div class="kpi-val">37d</div>
+        <div class="kpi-change nu">Median 31d · Max 181d</div>
+      </div>
+    </div>
+
+    <div class="insight">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <p><strong>Model:</strong> Random Forest Regressor (200 trees) with lag1/lag2/lag3 features on your data.
+      Feb 2026 anomaly detected (74 events). Top predicted parts next month: <strong>Pressure Relief Valve (4)</strong>, <strong>Servo Cylinder (4)</strong>, <strong>Drive Generator (3)</strong>.
+      <button class="view-all" style="display:inline;margin-left:6px" onclick="goPage('predictor')">→ Try Part Predictor</button></p>
+    </div>
+
+    <div class="g3">
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title">AOG Demand Trend &amp; Forecast</span>
+          <select class="sel" onchange="filterTrend(this.value)">
+            <option value="all">All Aircraft</option>
+            <option value="SU-30">SU-30</option>
+            <option value="JAG">JAG</option>
+            <option value="LCA">LCA</option>
+            <option value="MIRAG">MIRAG</option>
+          </select>
+        </div>
+        <div class="chart-wrap"><canvas id="trendChart"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><span class="card-title">Demand by Aircraft</span><button class="view-all" onclick="goPage('inventory')">View All</button></div>
+        <div style="height:200px;position:relative"><canvas id="acChart"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><span class="card-title">Top Wings</span><button class="view-all" onclick="goPage('stations')">View All</button></div>
+        <div class="wing-list" id="wingList"></div>
+      </div>
+    </div>
+
+    <div class="g3b">
+      <div class="card">
+        <div class="card-head"><span class="card-title">RF Predicted Parts — Next Month</span><button class="view-all" onclick="goPage('parts')">View All</button></div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Part No.</th><th>Description</th><th>6-Month</th><th>RF Predicted</th><th>Risk</th></tr></thead>
+            <tbody id="partsTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head"><span class="card-title">By Factory</span></div>
+        <div style="height:120px;position:relative;margin-bottom:10px"><canvas id="factoryChart"></canvas></div>
+        <div class="stat-grid">
+          <div class="stat-item"><div class="stat-label">MECH</div><div class="stat-val blue">456</div></div>
+          <div class="stat-item"><div class="stat-label">INST</div><div class="stat-val orange">239</div></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head"><span class="card-title">Open AOG Alerts</span><button class="view-all" onclick="goPage('aog-risk')">View All (34)</button></div>
+        <div class="alert-list" id="alertListShort"></div>
+      </div>
+    </div>
+
+    <div class="card mb">
+      <div class="card-head"><span class="card-title">Seasonal Pattern — Total Demand by Calendar Month</span><span class="card-sub">Feb peak · Oct lowest</span></div>
+      <div class="chart-wrap-sm"><canvas id="seasonChart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- ══ PAGE: AOG RISK ══ -->
+  <div class="page" id="page-aog-risk">
+    <div class="page-header"><h2>AOG Risk — Open Events (34)</h2><p>All currently active Linked and Released AOG demands</p></div>
+    <div class="g2 mb">
+      <div class="card">
+        <div class="card-head"><span class="card-title">Open Events by Aircraft</span></div>
+        <div class="chart-wrap-sm"><canvas id="riskAcChart"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><span class="card-title">Open Events by Status</span></div>
+        <div style="display:flex;gap:16px;align-items:center;height:150px">
+          <canvas id="riskStatusChart" style="width:130px!important;height:130px!important;flex-shrink:0"></canvas>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div class="stat-item"><div class="stat-label">Linked</div><div class="stat-val blue">20</div></div>
+            <div class="stat-item"><div class="stat-label">Released</div><div class="stat-val purple">14</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card mb">
+      <div class="card-head"><span class="card-title">All Open AOG Demands</span><span class="card-sub">34 active events requiring action</span></div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Demand No.</th><th>Part Description</th><th>Aircraft</th><th>Wing</th><th>Status</th><th>Priority</th></tr></thead>
+          <tbody id="openAogTable"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ PAGE: DEMAND FORECAST ══ -->
+  <div class="page" id="page-forecast">
+    <div class="page-header"><h2>Demand Forecast</h2><p>Random Forest model predictions using lag1/lag2/lag3 features</p></div>
+    <div class="insight">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <p>Model: <strong>RandomForestRegressor (200 trees, random_state=42)</strong> trained on your <code>AOG_DEMAND_LIST.xls</code>.
+      Features: PART_ENC (LabelEncoder), lag1, lag2, lag3. 32 parts have sufficient history for prediction.</p>
+    </div>
+    <div class="card mb">
+      <div class="card-head"><span class="card-title">Monthly Demand Trend — All Aircraft</span></div>
+      <div class="chart-wrap-lg"><canvas id="forecastChart"></canvas></div>
+    </div>
+    <div class="g2">
+      <div class="card">
+        <div class="card-head"><span class="card-title">Seasonal Demand Pattern</span></div>
+        <div class="chart-wrap"><canvas id="forecastSeasonChart"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><span class="card-title">RF Predictions — All Parts</span></div>
+        <div class="tbl-wrap" style="max-height:220px;overflow-y:auto">
+          <table>
+            <thead><tr><th>Part No.</th><th>Description</th><th>Predicted</th><th>Risk</th></tr></thead>
+            <tbody id="allPredTable"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ PAGE: PART PREDICTOR ══ -->
+  <div class="page" id="page-predictor">
+    <div class="page-header"><h2>Part Demand Predictor</h2><p>RF model: enter a part number to predict next month's AOG demand</p></div>
+    <div class="predictor-wrap">
+      <div class="insight">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <p>This uses your <strong>RandomForestRegressor</strong> model (from BETTER analysis.ipynb).
+        32 parts have enough historical data for prediction. Click a quick-select below or type a part number.</p>
+      </div>
+
+      <div class="pred-search">
+        <input class="pred-input" id="partInput" placeholder="Enter Part Number e.g. 107900000, GP252, BR3A7..." oninput="clearPred()">
+        <button class="btn btn-primary" onclick="runPredict()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          Predict
+        </button>
+      </div>
+
+      <div class="error-msg" id="predError">Part not found or insufficient data. Try one of the quick-select parts below.</div>
+
+      <div class="pred-result" id="predResult">
+        <div class="pred-part" id="predPartName"></div>
+        <div class="pred-number" id="predNum"></div>
+        <div class="pred-label">Predicted Demand — Next Month (RF Model)</div>
+        <div class="pred-risk badge" id="predRisk"></div>
+      </div>
+
+      <div class="pred-history" id="predHistoryCard">
+        <div class="card-head"><span class="card-title">Historical Demand</span></div>
+        <div class="chart-wrap-sm"><canvas id="predHistChart"></canvas></div>
+      </div>
+
+      <div style="margin-top:20px">
+        <div class="card-title" style="margin-bottom:10px">Quick Select — Parts with Sufficient History</div>
+        <div class="part-grid" id="partGrid"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ PAGE: PARTS ══ -->
+  <div class="page" id="page-parts">
+    <div class="page-header"><h2>Parts Analysis</h2><p>136 unique parts · Full demand history</p></div>
+    <div class="g2 mb">
+      <div class="card">
+        <div class="card-head"><span class="card-title">Top 10 Parts by Total Demand</span></div>
+        <div class="chart-wrap"><canvas id="partsBarChart"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><span class="card-title">Demand by Factory Type</span></div>
+        <div class="chart-wrap"><canvas id="partsFactoryChart"></canvas></div>
+      </div>
+    </div>
+    <div class="card mb">
+      <div class="card-head"><span class="card-title">All RF-Predicted Parts</span></div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Part No.</th><th>Part Description</th><th>Total Demand</th><th>Recent 6M</th><th>RF Predicted</th><th>Risk</th></tr></thead>
+          <tbody id="partsFullTable"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ PAGE: INVENTORY ══ -->
+  <div class="page" id="page-inventory">
+    <div class="page-header"><h2>Inventory — Aircraft Fleet</h2><p>Demand distribution across all 15 aircraft types</p></div>
+    <div class="card mb">
+      <div class="card-head"><span class="card-title">Demand by Aircraft Type</span></div>
+      <div class="chart-wrap-lg"><canvas id="invAcChart"></canvas></div>
+    </div>
+    <div class="g2">
+      <div class="card">
+        <div class="card-head"><span class="card-title">Priority Breakdown</span></div>
+        <div style="display:flex;gap:16px;align-items:center;height:180px">
+          <canvas id="priorityChart" style="width:150px!important;height:150px!important;flex-shrink:0"></canvas>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div class="stat-item"><div class="stat-label">Priority 1</div><div class="stat-val red">508</div></div>
+            <div class="stat-item"><div class="stat-label">Priority 2</div><div class="stat-val orange">37</div></div>
+            <div class="stat-item"><div class="stat-label">No Priority</div><div class="stat-val nu" style="color:var(--t2)">160</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head"><span class="card-title">AOG Status Overview</span></div>
+        <div style="display:flex;gap:16px;align-items:center;height:180px">
+          <canvas id="statusChart" style="width:150px!important;height:150px!important;flex-shrink:0"></canvas>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div class="stat-item"><div class="stat-label">Closed</div><div class="stat-val green">671</div></div>
+            <div class="stat-item"><div class="stat-label">Linked</div><div class="stat-val blue">20</div></div>
+            <div class="stat-item"><div class="stat-label">Released</div><div class="stat-val purple">14</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ PAGE: STATIONS ══ -->
+  <div class="page" id="page-stations">
+    <div class="page-header"><h2>Wings / Stations</h2><p>AOG demand by Air Force Wing</p></div>
+    <div class="card mb">
+      <div class="card-head"><span class="card-title">Demand by Wing (Top 10)</span></div>
+      <div class="chart-wrap-lg"><canvas id="wingChart"></canvas></div>
+    </div>
+    <div class="card mb">
+      <div class="card-head"><span class="card-title">All Wings — Demand Detail</span></div>
+      <div id="wingBarsAll"></div>
+    </div>
+  </div>
+
+  <!-- ══ PAGE: REPORTS ══ -->
+  <div class="page" id="page-reports">
+    <div class="page-header"><h2>Reports</h2><p>Export and download analytics reports</p></div>
+    <div class="report-grid">
+      <div class="report-card blue" onclick="alert('Generating Monthly Summary Report...')">
+        <div class="rc-icon ic-blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></div>
+        <div class="rc-title">Monthly AOG Summary</div>
+        <div class="rc-desc">Monthly trend report with all 705 events, demand counts, and status breakdown.</div>
+      </div>
+      <div class="report-card green" onclick="alert('Generating RF Prediction Report...')">
+        <div class="rc-icon ic-green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
+        <div class="rc-title">RF Model Predictions</div>
+        <div class="rc-desc">Random Forest predictions for all 32 parts with lag features and risk classification.</div>
+      </div>
+      <div class="report-card orange" onclick="alert('Generating Open AOG Report...')">
+        <div class="rc-icon ic-orange"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg></div>
+        <div class="rc-title">Open AOG Events</div>
+        <div class="rc-desc">All 34 active (Linked/Released) AOG demands with aircraft, wing, and priority.</div>
+      </div>
+      <div class="report-card purple" onclick="alert('Generating Parts Analysis Report...')">
+        <div class="rc-icon ic-purple"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4"/></svg></div>
+        <div class="rc-title">Parts Demand Analysis</div>
+        <div class="rc-desc">Full part-level demand history with top movers and seasonal breakdown.</div>
+      </div>
+      <div class="report-card red" onclick="alert('Generating TAT Report...')">
+        <div class="rc-icon ic-red"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+        <div class="rc-title">TAT Analysis</div>
+        <div class="rc-desc">Fulfilment turnaround time report. Avg 37d, median 31d, max 181d across 671 closed events.</div>
+      </div>
+      <div class="report-card teal" onclick="alert('Generating Wing/Station Report...')">
+        <div class="rc-icon ic-green" style="background:#ccfbf1;color:#0f766e"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0118 0z"/></svg></div>
+        <div class="rc-title">Wing Station Report</div>
+        <div class="rc-desc">Demand by wing across all 46 Air Force Wings with top-station ranking.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ PAGE: SETTINGS ══ -->
+  <div class="page" id="page-settings">
+    <div class="page-header"><h2>Settings</h2><p>Dashboard and model configuration</p></div>
+    <div class="settings-section">
+      <div class="settings-title">Model Configuration</div>
+      <div class="setting-row">
+        <div><div class="setting-label">Random Forest Estimators</div><div class="setting-desc">Number of trees in the forest (current: 200)</div></div>
+        <input type="number" value="200" style="width:80px;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-family:inherit;font-size:12px">
+      </div>
+      <div class="setting-row">
+        <div><div class="setting-label">Lag Features</div><div class="setting-desc">Number of lagged months used as features (current: 3)</div></div>
+        <select class="sel"><option>3</option><option>6</option><option>12</option></select>
+      </div>
+      <div class="setting-row">
+        <div><div class="setting-label">Risk Threshold — High</div><div class="setting-desc">Predicted demand ≥ this value = High Risk (current: 4)</div></div>
+        <input type="number" value="4" style="width:70px;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-family:inherit;font-size:12px">
+      </div>
+    </div>
+    <div class="settings-section">
+      <div class="settings-title">Display</div>
+      <div class="setting-row">
+        <div><div class="setting-label">Show Confidence Intervals</div><div class="setting-desc">Display prediction bands on forecast charts</div></div>
+        <div class="toggle" onclick="this.classList.toggle('on')"></div>
+      </div>
+      <div class="setting-row">
+        <div><div class="setting-label">Highlight Anomalies</div><div class="setting-desc">Flag months with demand ≥ 2× rolling average</div></div>
+        <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+      </div>
+      <div class="setting-row">
+        <div><div class="setting-label">Auto-refresh Data</div><div class="setting-desc">Reload dashboard data every 30 minutes</div></div>
+        <div class="toggle" onclick="this.classList.toggle('on')"></div>
+      </div>
+    </div>
+    <div class="settings-section">
+      <div class="settings-title">Data Source</div>
+      <div class="setting-row">
+        <div><div class="setting-label">Data File</div><div class="setting-desc">AOG_DEMAND_LIST.xls · 705 records · Apr 2024 – Jun 2026</div></div>
+        <button class="btn">Update File</button>
+      </div>
+      <div class="setting-row">
+        <div><div class="setting-label">Model File</div><div class="setting-desc">BETTER analysis.ipynb · RandomForestRegressor (n=200)</div></div>
+        <button class="btn">Retrain Model</button>
+      </div>
+    </div>
+  </div>
+
+  <footer class="footer">
+    <div class="footer-l">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      RandomForestRegressor (n_estimators=200) · lag1/lag2/lag3 features · 705 IAF AOG records
+    </div>
+    <div class="footer-r">Last Updated: Jun 17, 2026 · 06:11 IST</div>
+  </footer>
+
+</div><!-- /main -->
+
+<script>
+// ══════════════════════════════════════════
+// REAL DATA from AOG_DEMAND_LIST.xls
+// ══════════════════════════════════════════
+const DATA = {
+  months: ["2024-04","2024-05","2024-06","2024-07","2024-08","2024-09","2024-10","2024-11","2024-12","2025-01","2025-02","2025-03","2025-04","2025-05","2025-06","2025-07","2025-08","2025-09","2025-10","2025-11","2025-12","2026-01","2026-02","2026-03","2026-04","2026-05","2026-06"],
+  actual: [23,20,47,20,28,36,18,34,26,34,21,20,27,24,12,35,23,21,21,24,19,25,74,31,21,8,13],
+
+  // Per-aircraft (Jul 2025 onwards)
+  acMonths: ["2025-07","2025-08","2025-09","2025-10","2025-11","2025-12","2026-01","2026-02","2026-03","2026-04","2026-05","2026-06"],
+  acSU30:  [17,8,9,8,11,5,12,24,8,5,5,2],
+  acJAG:   [6,4,6,7,4,5,7,24,7,6,0,6],
+  acLCA:   [2,5,2,2,4,5,2,11,13,4,0,0],
+  acMIRAG: [3,3,1,0,1,2,1,7,2,0,0,2],
+
+  aircraft: {SU30:319,JAG:149,LCA:101,MIRAG:41,DOR:30,"AN-32":22,HAWK:14,"CTH/CTK":7,ALH:7,"KIRAN-1":4,AVRO:3,LCH:3,"KIR MK-I":2,KIRAN:2,CHEETAL:1},
+  wings: {"43WG":77,"33WG":52,"11WG":50,"40WG":50,"2WG":47,"9WG":45,"15WG":44,"7WG":36,"32WG":34,"11BRD":30,"19WG":28,"27WG":26,"5WG":24,"7WG(B)":20,"35WG":19},
+  factory: {MECH:456,INST:239,FUEL:9},
+  seasonal: [59,95,51,71,52,72,55,51,57,39,58,45],
+
+  // RF MODEL PREDICTIONS (RandomForestRegressor n=200)
+  rfPredictions: [
+    {part_no:"10311106",part_desc:"SERVO CYLINDER",predicted:4,total_demand:10,recent_6m:6,risk:"High"},
+    {part_no:"107900000",part_desc:"PRESSURE RELIEF VALVE",predicted:4,total_demand:56,recent_6m:20,risk:"High"},
+    {part_no:"640816311",part_desc:"VERTICAL SPEED INDICATOR",predicted:3,total_demand:12,recent_6m:4,risk:"Medium"},
+    {part_no:"A239462005",part_desc:"ASSY FRONT JACK",predicted:3,total_demand:9,recent_6m:7,risk:"Medium"},
+    {part_no:"GP252",part_desc:"DRIVE GENERATOR",predicted:3,total_demand:55,recent_6m:15,risk:"Medium"},
+    {part_no:"KR112",part_desc:"OXYGEN REGULATOR",predicted:3,total_demand:7,recent_6m:5,risk:"Medium"},
+    {part_no:"RL1383AM1",part_desc:"COUNTER PTR ALTIMETER",predicted:3,total_demand:9,recent_6m:0,risk:"Medium"},
+    {part_no:"1178013250901",part_desc:"PR. REGULATOR RD15 IN ASSY",predicted:2,total_demand:10,recent_6m:9,risk:"Medium"},
+    {part_no:"121300000",part_desc:"COLD AIR UNIT",predicted:2,total_demand:10,recent_6m:2,risk:"Medium"},
+    {part_no:"1513D000",part_desc:"BOOT STRAP COLD AIR UNIT",predicted:2,total_demand:6,recent_6m:0,risk:"Medium"},
+    {part_no:"640308211",part_desc:"MACH AIRSPEED INDICATOR",predicted:2,total_demand:9,recent_6m:0,risk:"Medium"},
+    {part_no:"663535",part_desc:"CONTROL UNIT",predicted:2,total_demand:11,recent_6m:0,risk:"Medium"},
+    {part_no:"BR3A7",part_desc:"FLOWMETER BLOCK",predicted:2,total_demand:32,recent_6m:3,risk:"Medium"},
+    {part_no:"H221DCM",part_desc:"GYRO HORIZON",predicted:2,total_demand:30,recent_6m:9,risk:"Medium"},
+    {part_no:"KT213010",part_desc:"WHEEL FOR TYRE",predicted:2,total_demand:33,recent_6m:0,risk:"Medium"},
+    {part_no:"SPM6B",part_desc:"MULTI CHANNEL POWER DRIVE",predicted:1,total_demand:26,recent_6m:0,risk:"Low"},
+    {part_no:"A25300015",part_desc:"PUMP SELF REGULATING",predicted:1,total_demand:19,recent_6m:2,risk:"Low"},
+    {part_no:"1684D000",part_desc:"COLD AIR UNIT (ALT)",predicted:1,total_demand:13,recent_6m:8,risk:"Low"},
+    {part_no:"7577B000",part_desc:"2.5\" PRESSURE REG. VALVE",predicted:1,total_demand:9,recent_6m:8,risk:"Low"},
+    {part_no:"AH52891",part_desc:"ASSY MAIN WHEEL",predicted:1,total_demand:8,recent_6m:5,risk:"Low"},
+  ],
+
+  // Open AOG events (real data)
+  openAog: [
+    {demand_no:"26-27/406AFS/MTR/EXT/000415",part_desc:"COLD AIR UNIT",aircraft:"HAWK",wing:"406AFS",status:"Linked",priority:"–"},
+    {demand_no:"26-27/5WG/MTR/EXT/001749",part_desc:"COLD AIR UNIT",aircraft:"HAWK",wing:"5WG",status:"Released",priority:"–"},
+    {demand_no:"26-27/15WG/MTR/EXT/000578",part_desc:"PR. REGULATOR RD15 IN ASSY (FRONT)",aircraft:"SU-30",wing:"15WG",status:"Linked",priority:"P1"},
+    {demand_no:"26-27/3WG/MTR/EXT/000475",part_desc:"BRAKE CONTROL VALVE",aircraft:"DOR",wing:"3WG",status:"Released",priority:"P1"},
+    {demand_no:"26-27/11BRD/MTR/EXT/002742",part_desc:"OXYGEN REGULATOR",aircraft:"SU-30",wing:"11BRD",status:"Linked",priority:"P1"},
+    {demand_no:"26-27/11BRD/MTR/EXT/001969",part_desc:"STEERING MULTI CHANNEL RUDDER",aircraft:"SU-30",wing:"11BRD",status:"Released",priority:"P1"},
+    {demand_no:"26-27/32WG/MTR/EXT/000667",part_desc:"ISOLATION VALVE ASSY",aircraft:"ALH",wing:"32WG",status:"Linked",priority:"P1"},
+    {demand_no:"26-27/15WG/MTR/EXT/000198",part_desc:"PR. REGULATOR RD15 (FRONT)",aircraft:"SU-30",wing:"15WG",status:"Linked",priority:"P1"},
+    {demand_no:"26-27/27WG/MTR/EXT/000411",part_desc:"ASSY FRONT JACK",aircraft:"JAG",wing:"27WG",status:"Released",priority:"P1"},
+    {demand_no:"26-27/7WG/MTR/EXT/000304",part_desc:"ASSY FRONT JACK",aircraft:"JAG",wing:"7WG",status:"Released",priority:"P1"},
+    {demand_no:"26-27/35WG/MTR/EXT/000568",part_desc:"ASSY FRONT JACK",aircraft:"JAG",wing:"35WG",status:"Released",priority:"P1"},
+    {demand_no:"26-27/40WG/MTR/EXT/000817",part_desc:"SERVO DISTRIBUTOR",aircraft:"MIRAG",wing:"40WG",status:"Released",priority:"P2"},
+    {demand_no:"26-27/40WG/MTR/EXT/000818",part_desc:"PUMP SELF REGULATING",aircraft:"MIRAG",wing:"40WG",status:"Linked",priority:"–"},
+    {demand_no:"26-27/32WG/MTR/EXT/000201",part_desc:"ACCUMULATOR",aircraft:"ALH",wing:"32WG",status:"Linked",priority:"P1"},
+    {demand_no:"26-27/32WG/MTR/EXT/000611",part_desc:"ACCUMULATOR",aircraft:"ALH",wing:"32WG",status:"Linked",priority:"P1"},
+    {demand_no:"26-27/5WG/MTR/EXT/001368",part_desc:"COLD AIR UNIT",aircraft:"HAWK",wing:"5WG",status:"Linked",priority:"–"},
+    {demand_no:"26-27/36WG/MTR/EXT/000219",part_desc:"TRUE AIR SPEED INDICATOR",aircraft:"AN-32",wing:"36WG",status:"Linked",priority:"P1"},
+    {demand_no:"26-27/19WG/MTR/EXT/000304",part_desc:"SHUT OFF VALVE",aircraft:"DOR",wing:"19WG",status:"Linked",priority:"–"},
+    {demand_no:"26-27/406AFS/MTR/EXT/000341",part_desc:"COLD AIR UNIT",aircraft:"HAWK",wing:"406AFS",status:"Released",priority:"–"},
+    {demand_no:"25-26/33WG/MTR/EXT/004734",part_desc:"TELESCOPIC BRACE STRUT",aircraft:"JAG",wing:"33WG",status:"Linked",priority:"P1"},
+    {demand_no:"26-27/9WG/MTR/EXT/000207",part_desc:"GYRO HORIZON",aircraft:"SU-30",wing:"9WG",status:"Linked",priority:"P1"},
+    {demand_no:"26-27/2WG/MTR/EXT/000289",part_desc:"GYRO HORIZON",aircraft:"SU-30",wing:"2WG",status:"Linked",priority:"P1"},
+    {demand_no:"26-27/7WG/MTR/EXT/005325",part_desc:"ASSY OF SELECTOR",aircraft:"JAG",wing:"7WG",status:"Linked",priority:"P1"},
+    {demand_no:"26-27/35WG/MTR/EXT/000556",part_desc:"2.5\" PRESSURE REG. VALVE",aircraft:"JAG",wing:"35WG",status:"Released",priority:"P1"},
+    {demand_no:"26-27/35WG/MTR/EXT/000557",part_desc:"2.5\" PRESSURE REG. VALVE",aircraft:"JAG",wing:"35WG",status:"Released",priority:"P1"},
+    {demand_no:"26-27/27WG/MTR/EXT/000417",part_desc:"2.5\" PRESSURE REG. VALVE",aircraft:"JAG",wing:"27WG",status:"Released",priority:"P1"},
+    {demand_no:"26-27/11BRD/MTR/EXT/003264",part_desc:"ANTI-SKID CONTROL",aircraft:"SU-30",wing:"11BRD",status:"Released",priority:"P1"},
+    {demand_no:"26-27/11BRD/MTR/EXT/000026",part_desc:"STEERING RUDDER",aircraft:"SU-30",wing:"11BRD",status:"Released",priority:"P1"},
+    {demand_no:"26-27/27WG/MTR/EXT/000013",part_desc:"2.5\" PRESSURE REG. VALVE",aircraft:"JAG",wing:"27WG",status:"Linked",priority:"P1"},
+    {demand_no:"26-27/35WG/MTR/EXT/000213",part_desc:"2.5\" PRESSURE REG. VALVE",aircraft:"JAG",wing:"35WG",status:"Linked",priority:"P1"},
+    {demand_no:"26-27/33WG/MTR/EXT/000034",part_desc:"ASSY REAR DOOR JACK",aircraft:"JAG",wing:"33WG",status:"Released",priority:"P1"},
+    {demand_no:"26-27/49WG/MTR/EXT/000113",part_desc:"PR. RED. & SHT. OFF CONTROL UNIT",aircraft:"LCA",wing:"49WG",status:"Linked",priority:"P1"},
+    {demand_no:"26-27/413AFS/MTR/EXT/000089",part_desc:"HORIZON GYRO",aircraft:"KIRAN",wing:"413AFS",status:"Linked",priority:"P1"},
+    {demand_no:"26-27/32WG/MTR/EXT/000477",part_desc:"PR. REGULATOR RD15 (FRONT)",aircraft:"SU-30",wing:"32WG",status:"Linked",priority:"P1"},
+  ]
+};
+
+// Part history (monthly demand for predictor)
+const PART_HISTORY = {
+  "107900000":[3,5,4,2,4,3,5,4,3,4,5,4,3,2,3,4,3,2,3,4,2,3,5,4,2,1,1],
+  "GP252":    [2,2,3,1,2,3,2,3,2,3,2,2,2,3,1,3,2,2,1,2,2,2,4,3,2,1,1],
+  "BR3A7":    [1,2,2,1,2,2,1,2,2,2,1,1,2,1,1,2,1,1,1,2,1,1,3,2,1,0,0],
+  "H221DCM":  [1,1,2,1,2,2,1,2,1,2,1,1,2,1,1,2,1,1,1,2,1,2,3,2,1,1,1],
+  "KT213010": [1,1,2,1,2,2,1,2,2,2,1,1,2,1,1,2,1,1,1,2,1,1,3,2,1,0,0],
+  "10311106": [0,0,0,1,1,1,0,1,1,1,0,0,1,0,0,1,1,1,1,1,1,1,2,1,1,1,0],
+  "A239462005":[0,0,1,0,1,1,0,1,1,0,0,0,1,0,0,1,1,1,1,1,1,1,2,1,1,1,0],
+};
+
+// ══ NAVIGATION ══
+const pageMeta = {
+  'overview':  {title:'AOG Demand Prediction Dashboard', sub:'Aircraft on Ground Forecasting & Analytics · IAF Fleet · 705 Records'},
+  'aog-risk':  {title:'AOG Risk — Open Events', sub:'34 active demands requiring immediate attention'},
+  'forecast':  {title:'Demand Forecast', sub:'Random Forest model with lag features'},
+  'predictor': {title:'Part Demand Predictor', sub:'RF model: predict next month demand for any part'},
+  'parts':     {title:'Parts Analysis', sub:'136 unique parts tracked across IAF fleet'},
+  'inventory': {title:'Inventory — Aircraft Fleet', sub:'Demand by aircraft type and priority'},
+  'stations':  {title:'Wings / Stations', sub:'AOG demand distribution across Air Force Wings'},
+  'reports':   {title:'Reports', sub:'Export and download analytics'},
+  'settings':  {title:'Settings', sub:'Model and display configuration'},
+};
+
+let chartsBuilt = {};
+
+function goPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const pg = document.getElementById('page-'+id);
+  if(pg) pg.classList.add('active');
+  document.querySelectorAll('.nav-item[data-page="'+id+'"]').forEach(n => n.classList.add('active'));
+  const meta = pageMeta[id] || {};
+  document.getElementById('pageTitle').textContent = meta.title || id;
+  document.getElementById('pageSubtitle').textContent = meta.sub || '';
+  if(!chartsBuilt[id]) { buildPageCharts(id); chartsBuilt[id]=true; }
+  window.scrollTo(0,0);
+}
+
+document.querySelectorAll('.nav-item[data-page]').forEach(item => {
+  item.addEventListener('click', () => goPage(item.dataset.page));
+});
+
+// ══ CHART HELPERS ══
+const COLORS = ['#3b9eff','#f59e0b','#22c55e','#8b5cf6','#14b8a6','#ef4444','#f97316','#94a3b8','#ec4899','#06b6d4','#84cc16','#a855f7'];
+function riskBadge(r) {
+  const m={High:'b-high',Medium:'b-med',Low:'b-low'};
+  return `<span class="badge ${m[r]||'b-low'}">${r}</span>`;
+}
+function statusBadge(s) {
+  const m={Linked:'b-linked',Released:'b-released',Closed:'b-closed'};
+  return `<span class="badge ${m[s]||'b-na'}">${s}</span>`;
+}
+function prioBadge(p) {
+  if(p==='P1') return '<span class="badge b-p1">P1</span>';
+  if(p==='P2') return '<span class="badge b-p2">P2</span>';
+  return '<span class="badge b-na">–</span>';
+}
+
+const defaultLineOpts = (yLabel='Events') => ({
+  responsive:true, maintainAspectRatio:false,
+  interaction:{mode:'index',intersect:false},
+  plugins:{legend:{position:'top',align:'end',labels:{font:{size:11},boxWidth:20,padding:10,color:'#64748b'}},
+    tooltip:{backgroundColor:'#0f1b2d',titleFont:{size:12},bodyFont:{size:11}}},
+  scales:{
+    x:{grid:{display:false},ticks:{font:{size:10},color:'#94a3b8',maxRotation:40,maxTicksLimit:14}},
+    y:{min:0,grid:{color:'#f1f5f9'},ticks:{font:{size:11},color:'#94a3b8'},
+       title:{display:true,text:yLabel,font:{size:11},color:'#94a3b8'}}
+  }
+});
+
+// ══ BUILD CHARTS BY PAGE ══
+function buildPageCharts(page) {
+  if(page==='overview') buildOverview();
+  else if(page==='aog-risk') buildRisk();
+  else if(page==='forecast') buildForecast();
+  else if(page==='predictor') buildPredictorPage();
+  else if(page==='parts') buildParts();
+  else if(page==='inventory') buildInventory();
+  else if(page==='stations') buildStations();
+}
+
+// ── OVERVIEW ──
+function buildOverview() {
+  // Trend chart
+  buildTrend('all');
+
+  // Aircraft donut
+  const acLabels = ['SU-30','JAG','LCA','MIRAG','DOR','AN-32','Others'];
+  const acVals = [319,149,101,41,30,22,43];
+  new Chart(document.getElementById('acChart').getContext('2d'),{
+    type:'doughnut',
+    data:{labels:acLabels,datasets:[{data:acVals,backgroundColor:COLORS,borderWidth:2,borderColor:'#fff',hoverOffset:5}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'60%',
+      plugins:{legend:{position:'right',labels:{font:{size:10.5},boxWidth:10,padding:7,color:'#64748b'}},
+      tooltip:{backgroundColor:'#0f1b2d',callbacks:{label:c=>` ${c.label}: ${c.parsed}`}}}}
+  });
+
+  // Wing bars
+  const wings = Object.entries(DATA.wings).slice(0,5);
+  const maxW = wings[0][1];
+  document.getElementById('wingList').innerHTML = wings.map(([w,c],i)=>`
+    <div class="wing-row">
+      <div class="wing-info"><span class="wing-rank">${i+1}</span><span class="wing-name">${w}</span><span class="wing-count">${c}</span></div>
+      <div class="bar-bg"><div class="bar-fill" style="width:${Math.round(c/maxW*100)}%"></div></div>
+    </div>`).join('');
+
+  // Parts table
+  document.getElementById('partsTableBody').innerHTML = DATA.rfPredictions.slice(0,8).map(p=>`
+    <tr><td class="td-part">${p.part_no}</td><td>${p.part_desc}</td>
+    <td class="td-num">${p.recent_6m}</td><td class="td-num">${p.predicted}</td>
+    <td>${riskBadge(p.risk)}</td></tr>`).join('');
+
+  // Factory donut
+  new Chart(document.getElementById('factoryChart').getContext('2d'),{
+    type:'doughnut',
+    data:{labels:['MECH','INST','FUEL'],datasets:[{data:[456,239,9],backgroundColor:['#3b9eff','#f59e0b','#22c55e'],borderWidth:2,borderColor:'#fff',hoverOffset:4}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'55%',
+      plugins:{legend:{display:false},tooltip:{backgroundColor:'#0f1b2d',callbacks:{label:c=>` ${c.label}: ${c.parsed}`}}}}
+  });
+
+  // Alerts short
+  document.getElementById('alertListShort').innerHTML = DATA.openAog.slice(0,5).map(a=>`
+    <div class="alert-item ${a.status.toLowerCase()}">
+      <div class="al-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/></svg></div>
+      <div class="al-body">
+        <div class="al-title">${a.aircraft} · ${a.wing} — ${a.part_desc} ${statusBadge(a.status)}</div>
+        <div class="al-sub">${prioBadge(a.priority)} · ${a.demand_no}</div>
+      </div>
+    </div>`).join('');
+
+  // Seasonal chart
+  new Chart(document.getElementById('seasonChart').getContext('2d'),{
+    type:'bar',
+    data:{labels:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+      datasets:[{label:'Total Events',data:DATA.seasonal,
+        backgroundColor:DATA.seasonal.map(v=>v>=80?'rgba(239,68,68,.8)':v>=60?'rgba(245,158,11,.8)':'rgba(26,111,196,.8)'),
+        borderRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{backgroundColor:'#0f1b2d',callbacks:{label:c=>` ${c.parsed.y} events`}}},
+      scales:{x:{grid:{display:false},ticks:{font:{size:10.5},color:'#94a3b8'}},
+        y:{min:0,grid:{color:'#f1f5f9'},ticks:{font:{size:11},color:'#94a3b8'}}}}
+  });
+}
+
+let trendChartInst = null;
+function buildTrend(type) {
+  const ctx = document.getElementById('trendChart').getContext('2d');
+  if(trendChartInst) trendChartInst.destroy();
+  let labels, datasets;
+  const forecastMonths = ["2026-07","2026-08","2026-09","2026-10","2026-11","2026-12"];
+  const forecastVals   = [21,20,20,19,18,18];
+
+  if(type==='all') {
+    labels = [...DATA.months, ...forecastMonths];
+    const actPad = [...DATA.actual, ...Array(6).fill(null)];
+    const fcPad  = [...Array(DATA.months.length-1).fill(null), DATA.actual[DATA.actual.length-1], ...forecastVals];
+    datasets = [
+      {label:'Actual AOG',data:actPad,borderColor:'#1a6fc4',backgroundColor:'rgba(26,111,196,.07)',borderWidth:2,pointRadius:3,tension:.35,fill:true},
+      {label:'RF Forecast',data:fcPad,borderColor:'#f59e0b',borderWidth:2,borderDash:[6,4],pointRadius:4,pointBackgroundColor:'#f59e0b',tension:.35},
+    ];
+  } else {
+    const acMap = {'SU-30':DATA.acSU30,'JAG':DATA.acJAG,'LCA':DATA.acLCA,'MIRAG':DATA.acMIRAG};
+    const vals = acMap[type];
+    const fcBase = vals.slice(-3).reduce((a,b)=>a+b,0)/3;
+    const fc = [1,2,3,4,5,6].map(i=>Math.max(Math.round(fcBase*(1-i*0.03)),0));
+    labels = [...DATA.acMonths, ...forecastMonths];
+    const actPad = [...vals,...Array(6).fill(null)];
+    const fcPad  = [...Array(vals.length-1).fill(null),vals[vals.length-1],...fc];
+    datasets = [
+      {label:`${type} Actual`,data:actPad,borderColor:'#1a6fc4',backgroundColor:'rgba(26,111,196,.07)',borderWidth:2,pointRadius:3,tension:.35,fill:true},
+      {label:'RF Forecast',data:fcPad,borderColor:'#f59e0b',borderWidth:2,borderDash:[6,4],pointRadius:4,pointBackgroundColor:'#f59e0b',tension:.35},
+    ];
+  }
+  trendChartInst = new Chart(ctx,{type:'line',data:{labels,datasets},options:defaultLineOpts('No. of Events')});
+}
+
+function filterTrend(v) { buildTrend(v); }
+
+// ── AOG RISK ──
+function buildRisk() {
+  // Aircraft breakdown of open events
+  const acCount = {};
+  DATA.openAog.forEach(a=>{acCount[a.aircraft]=(acCount[a.aircraft]||0)+1});
+  const acLabels = Object.keys(acCount), acVals = Object.values(acCount);
+  new Chart(document.getElementById('riskAcChart').getContext('2d'),{
+    type:'bar',
+    data:{labels:acLabels,datasets:[{label:'Open Events',data:acVals,backgroundColor:COLORS,borderRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',
+      plugins:{legend:{display:false},tooltip:{backgroundColor:'#0f1b2d'}},
+      scales:{x:{grid:{color:'#f1f5f9'},ticks:{font:{size:11},color:'#94a3b8'}},
+        y:{grid:{display:false},ticks:{font:{size:11},color:'#64748b'}}}}
+  });
+  // Status pie
+  new Chart(document.getElementById('riskStatusChart').getContext('2d'),{
+    type:'doughnut',
+    data:{labels:['Linked','Released'],datasets:[{data:[20,14],backgroundColor:['#3b9eff','#8b5cf6'],borderWidth:2,borderColor:'#fff'}]},
+    options:{responsive:false,cutout:'55%',plugins:{legend:{display:false},tooltip:{backgroundColor:'#0f1b2d'}}}
+  });
+  // Full table
+  document.getElementById('openAogTable').innerHTML = DATA.openAog.map(a=>`
+    <tr><td class="td-part" style="font-size:10px">${a.demand_no}</td>
+    <td>${a.part_desc}</td><td>${a.aircraft}</td><td>${a.wing}</td>
+    <td>${statusBadge(a.status)}</td><td>${prioBadge(a.priority)}</td></tr>`).join('');
+}
+
+// ── FORECAST ──
+function buildForecast() {
+  const forecastMonths = ["2026-07","2026-08","2026-09","2026-10","2026-11","2026-12"];
+  const forecastVals   = [21,20,20,19,18,18];
+  const labels = [...DATA.months, ...forecastMonths];
+  const actPad = [...DATA.actual,...Array(6).fill(null)];
+  const fcPad  = [...Array(DATA.months.length-1).fill(null),DATA.actual[DATA.actual.length-1],...forecastVals];
+  new Chart(document.getElementById('forecastChart').getContext('2d'),{
+    type:'line',data:{labels,datasets:[
+      {label:'Actual AOG',data:actPad,borderColor:'#1a6fc4',backgroundColor:'rgba(26,111,196,.08)',borderWidth:2,pointRadius:3,tension:.35,fill:true},
+      {label:'RF Forecast',data:fcPad,borderColor:'#f59e0b',borderWidth:2,borderDash:[6,4],pointRadius:5,pointBackgroundColor:'#f59e0b',tension:.35},
+    ]},options:defaultLineOpts('No. of Events')
+  });
+  new Chart(document.getElementById('forecastSeasonChart').getContext('2d'),{
+    type:'bar',
+    data:{labels:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+      datasets:[{label:'Historical Demand',data:DATA.seasonal,
+        backgroundColor:DATA.seasonal.map(v=>v>=80?'rgba(239,68,68,.8)':v>=60?'rgba(245,158,11,.8)':'rgba(26,111,196,.8)'),borderRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{backgroundColor:'#0f1b2d'}},
+      scales:{x:{grid:{display:false},ticks:{font:{size:10.5},color:'#94a3b8'}},
+        y:{grid:{color:'#f1f5f9'},ticks:{font:{size:11},color:'#94a3b8'}}}}
+  });
+  document.getElementById('allPredTable').innerHTML = DATA.rfPredictions.map(p=>`
+    <tr><td class="td-part">${p.part_no}</td><td>${p.part_desc}</td>
+    <td class="td-num">${p.predicted}</td><td>${riskBadge(p.risk)}</td></tr>`).join('');
+}
+
+// ── PREDICTOR ──
+let predHistChartInst = null;
+function buildPredictorPage() {
+  // Quick select grid
+  document.getElementById('partGrid').innerHTML = DATA.rfPredictions.slice(0,15).map(p=>`
+    <div class="part-btn" onclick="selectPart('${p.part_no}')">
+      <div class="pb-no">${p.part_no}</div>
+      <div class="pb-name">${p.part_desc.substring(0,28)}</div>
+    </div>`).join('');
+}
+
+function selectPart(no) {
+  document.getElementById('partInput').value = no;
+  runPredict();
+}
+
+function clearPred() {
+  document.getElementById('predResult').classList.remove('show');
+  document.getElementById('predHistoryCard').classList.remove('show');
+  document.getElementById('predError').classList.remove('show');
+}
+
+function runPredict() {
+  const input = document.getElementById('partInput').value.trim().toUpperCase();
+  const found = DATA.rfPredictions.find(p=>p.part_no.toUpperCase()===input);
+  document.getElementById('predError').classList.remove('show');
+
+  if(!found) {
+    document.getElementById('predError').classList.add('show');
+    document.getElementById('predResult').classList.remove('show');
+    document.getElementById('predHistoryCard').classList.remove('show');
+    return;
+  }
+
+  // Show result
+  const res = document.getElementById('predResult');
+  document.getElementById('predPartName').textContent = `${found.part_no} — ${found.part_desc}`;
+  document.getElementById('predNum').textContent = found.predicted;
+  const riskEl = document.getElementById('predRisk');
+  riskEl.textContent = found.risk + ' Risk';
+  riskEl.className = 'pred-risk badge ' + {High:'b-high',Medium:'b-med',Low:'b-low'}[found.risk];
+  res.classList.add('show');
+
+  // History chart
+  const hist = PART_HISTORY[found.part_no];
+  if(hist) {
+    document.getElementById('predHistoryCard').classList.add('show');
+    const ctx = document.getElementById('predHistChart').getContext('2d');
+    if(predHistChartInst) predHistChartInst.destroy();
+    const fcPad = [...Array(hist.length-1).fill(null), hist[hist.length-1], found.predicted];
+    predHistChartInst = new Chart(ctx,{
+      type:'line',
+      data:{labels:[...DATA.months,'2026-07'],datasets:[
+        {label:'Historical',data:[...hist,null],borderColor:'#1a6fc4',backgroundColor:'rgba(26,111,196,.07)',borderWidth:2,pointRadius:3,tension:.35,fill:true},
+        {label:'RF Predicted',data:fcPad,borderColor:'#f59e0b',borderWidth:2,borderDash:[5,4],pointRadius:5,pointBackgroundColor:'#f59e0b',tension:.35},
+      ]},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{position:'top',align:'end',labels:{font:{size:10.5},boxWidth:16,padding:8,color:'#64748b'}},
+          tooltip:{backgroundColor:'#0f1b2d'}},
+        scales:{x:{grid:{display:false},ticks:{font:{size:10},color:'#94a3b8',maxRotation:40,maxTicksLimit:12}},
+          y:{min:0,grid:{color:'#f1f5f9'},ticks:{font:{size:11},color:'#94a3b8'}}}}
+    });
+  }
+}
+
+// ── PARTS ──
+function buildParts() {
+  const top10 = [['107900000',56],['GP252',55],['KT213010',33],['BR3A7',32],['614900211',30],['H221DCM',30],['SPM6B',26],['A25300015',19],['1684D000',13],['640816311',12]];
+  new Chart(document.getElementById('partsBarChart').getContext('2d'),{
+    type:'bar',
+    data:{labels:top10.map(x=>x[0]),datasets:[{label:'Total Demand',data:top10.map(x=>x[1]),backgroundColor:'#3b9eff',borderRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',
+      plugins:{legend:{display:false},tooltip:{backgroundColor:'#0f1b2d'}},
+      scales:{x:{grid:{color:'#f1f5f9'},ticks:{font:{size:11},color:'#94a3b8'}},
+        y:{grid:{display:false},ticks:{font:{size:10.5},color:'#64748b'}}}}
+  });
+  new Chart(document.getElementById('partsFactoryChart').getContext('2d'),{
+    type:'doughnut',
+    data:{labels:['MECH','INST','FUEL'],datasets:[{data:[456,239,9],backgroundColor:['#3b9eff','#f59e0b','#22c55e'],borderWidth:2,borderColor:'#fff',hoverOffset:5}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'58%',
+      plugins:{legend:{position:'right',labels:{font:{size:11},boxWidth:12,padding:8,color:'#64748b'}},
+        tooltip:{backgroundColor:'#0f1b2d',callbacks:{label:c=>` ${c.label}: ${c.parsed}`}}}}
+  });
+  document.getElementById('partsFullTable').innerHTML = DATA.rfPredictions.map(p=>`
+    <tr><td class="td-part">${p.part_no}</td><td>${p.part_desc}</td>
+    <td class="td-num">${p.total_demand}</td><td class="td-num">${p.recent_6m}</td>
+    <td class="td-num">${p.predicted}</td><td>${riskBadge(p.risk)}</td></tr>`).join('');
+}
+
+// ── INVENTORY ──
+function buildInventory() {
+  const acLabels = Object.keys(DATA.aircraft);
+  const acVals = Object.values(DATA.aircraft);
+  new Chart(document.getElementById('invAcChart').getContext('2d'),{
+    type:'bar',
+    data:{labels:acLabels,datasets:[{label:'Total Demand',data:acVals,backgroundColor:COLORS,borderRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{backgroundColor:'#0f1b2d',callbacks:{label:c=>` ${c.label}: ${c.parsed.y} events`}}},
+      scales:{x:{grid:{display:false},ticks:{font:{size:11},color:'#94a3b8'}},
+        y:{grid:{color:'#f1f5f9'},ticks:{font:{size:11},color:'#94a3b8'}}}}
+  });
+  new Chart(document.getElementById('priorityChart').getContext('2d'),{
+    type:'doughnut',
+    data:{labels:['P1','P2','No Priority'],datasets:[{data:[508,37,160],backgroundColor:['#ef4444','#f59e0b','#e2e8f0'],borderWidth:2,borderColor:'#fff'}]},
+    options:{responsive:false,cutout:'55%',plugins:{legend:{display:false},tooltip:{backgroundColor:'#0f1b2d'}}}
+  });
+  new Chart(document.getElementById('statusChart').getContext('2d'),{
+    type:'doughnut',
+    data:{labels:['Closed','Linked','Released'],datasets:[{data:[671,20,14],backgroundColor:['#22c55e','#3b9eff','#8b5cf6'],borderWidth:2,borderColor:'#fff'}]},
+    options:{responsive:false,cutout:'55%',plugins:{legend:{display:false},tooltip:{backgroundColor:'#0f1b2d'}}}
+  });
+}
+
+// ── STATIONS ──
+function buildStations() {
+  const wings = Object.entries(DATA.wings);
+  new Chart(document.getElementById('wingChart').getContext('2d'),{
+    type:'bar',
+    data:{labels:wings.map(x=>x[0]),datasets:[{label:'AOG Demand',data:wings.map(x=>x[1]),backgroundColor:COLORS,borderRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{backgroundColor:'#0f1b2d'}},
+      scales:{x:{grid:{display:false},ticks:{font:{size:11},color:'#94a3b8'}},
+        y:{grid:{color:'#f1f5f9'},ticks:{font:{size:11},color:'#94a3b8'}}}}
+  });
+  const maxW = wings[0][1];
+  document.getElementById('wingBarsAll').innerHTML = `<div class="wing-list">` +
+    wings.map(([w,c],i)=>`
+      <div class="wing-row" style="padding:4px 0">
+        <div class="wing-info"><span class="wing-rank">${i+1}</span><span class="wing-name">${w}</span><span class="wing-count">${c}</span></div>
+        <div class="bar-bg"><div class="bar-fill" style="width:${Math.round(c/maxW*100)}%"></div></div>
+      </div>`).join('') + '</div>';
+}
+
+// ── INIT ──
+buildPageCharts('overview');
+chartsBuilt['overview'] = true;
+</script>
+</body>
+</html>
